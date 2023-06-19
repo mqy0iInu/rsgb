@@ -1,5 +1,10 @@
 mod cpu;
+use cpu::{cpu_reset, cpu_main};
 
 fn main() {
-    println!("Hello, world!");
+    cpu_reset();
+
+    loop {
+        cpu_main();
+    }
 }

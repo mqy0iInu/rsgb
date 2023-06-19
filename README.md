@@ -24,6 +24,9 @@ I am developing an emulator based on them! (I even took it apart and analyzed it
 ## GB/GBC Reference🎓📘📖
 https://gbdev.io/  
 https://gbdev.io/pandocs/  
+https://github.com/gbdev/awesome-gbdev  
+
+### [Japanese]
 https://www.dkrk-blog.net/game/gb_dev_basic  
   
 ## GB Video Reference🎓🎞️📺
