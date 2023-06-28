@@ -15,7 +15,7 @@ I am developing an emulator based on them! (I even took it apart and analyzed it
 </div>
 
 # 📍PJ Status / PJ進捗状況📊
-## `PJ Status / 進捗率` ... `📊5.00%📊`  
+## `PJ Status / 進捗率` ... `📊61.11%📊`  
 `Sorry for Japanese 🙇`  
 
 <img src="dev/pj_status.png" alt="file"  width="99%">

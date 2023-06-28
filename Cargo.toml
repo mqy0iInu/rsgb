@@ -1,11 +1,21 @@
 [package]
-name = "rust_gb_gbc_emulator"
+name = "rsgb"
 version = "0.1.0"
-edition = "2021"
+readme = "README.md"
+keywords = ["gameboy", "gameboy color", "dmg" ,"cgb", "emulator"]
+categories = ["emulators"]
+license = "MIT"
+include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
 
 [dependencies]
 once_cell = "1.8.0"
 bitflags = "2.1.0"
+env_logger = "0.10.0"
 lazy_static = "1.4.0"
+log = "0.4.18"
 rand = "0.8.5"
 sdl2 = "0.35.2"
+
+[[bin]]
+name = "rsgb"
+path = "src/main.rs"
