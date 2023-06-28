@@ -20,6 +20,7 @@ mod gamepad;
 mod mmu;
 mod ppu;
 mod timer;
+mod cgb;
 
 fn translate_keycode(key: Keycode) -> Option<gamepad::Key> {
     match key {
