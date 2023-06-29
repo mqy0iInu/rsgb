@@ -15,6 +15,7 @@ pub struct Cartridge {
     cgb_flg: u8,
 }
 
+// https://gbdev.io/pandocs/The_Cartridge_Header.html
 impl Cartridge {
     pub fn new(fname: &str) -> Self {
         let mut rom = Vec::new();
@@ -25,25 +26,7 @@ impl Cartridge {
         let cgb_flg: u8 = rom[0x0143];
         info!("CGB Flag: {:#02X}", cgb_flg);
 
-        let rom_size: usize = match rom[0x0148] {
-            0 => 32 * 1024,
-            n => 32 * 1024 << (n as usize),
-        };
-
-        let num_rom_banks = 2 << rom[0x0148];
-
-        let ram_size: usize = match rom[0x0149] {
-            0 => 0,
-            1 => 2 * 1024,
-            2 => 8 * 1024,
-            3 => 32 * 1024,
-            4 => 128 * 1024,
-            5 => 64 * 1024,
-            _ => panic!("RAM size invalid"),
-        };
-
         let mbc_type = rom[0x0147];
-
         let mbc_name = match mbc_type {
             0x00 => "ROM ONLY",
             0x01 => "MBC1",
@@ -76,17 +59,34 @@ impl Cartridge {
             _ => "Unknown",
         };
 
+        let rom_size: usize = match rom[0x0148] {
+            0 => 32 * 1024,
+            n => 32 * 1024 << (n as usize),
+        };
+
+        let num_rom_banks = 2 << rom[0x0148];
+
+        let ram_size: usize = match rom[0x0149] {
+            0 => 0,
+            1 => 2 * 1024,
+            2 => 8 * 1024,
+            3 => 32 * 1024,
+            4 => 128 * 1024,
+            5 => 64 * 1024,
+            _ => panic!("RAM size invalid"),
+        };
+
+        // チェックサム$014D (= $0134~$014C)
         let mut chksum: u8 = 0;
         for i in 0x0134..0x014D {
             chksum = chksum.wrapping_sub(rom[i]).wrapping_sub(1);
         }
+        if chksum != rom[0x014D] {
+            panic!("ROM header checksum is incorrect");
+        }
 
         if rom_size != rom.len() {
             panic!("ROM file invalid");
-        }
-
-        if chksum != rom[0x014D] {
-            panic!("ROM header checksum is incorrect");
         }
 
         info!("ROM size {}KB", rom_size / 1024);
@@ -151,7 +151,7 @@ impl Cartridge {
     }
 }
 
-impl IODevice for Cartridge {
+impl IO for Cartridge {
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
             // RAM enable

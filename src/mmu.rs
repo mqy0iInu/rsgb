@@ -1,6 +1,6 @@
 use cgb::CGB;
 use cartridge::Cartridge;
-use common::IODevice;
+use common::IO;
 use gamepad::GamePad;
 use ppu::PPU;
 use timer::Timer;

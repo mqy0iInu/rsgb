@@ -1,9 +1,8 @@
-use common::IODevice;
+use common::*;
+use  cgb::*;
 
-const SCREEN_W: u8 = 160;
-const SCREEN_H: u8 = 144;
-const VRAM_SIZE: u16 = 8 * 1024;
-const OAM_SIZE: u16 = 0xA0;
+const VRAM_SIZE: usize = 8 * 1024;
+const OAM_SIZE: usize = 0xA0;
 
 #[derive(Copy, Clone, PartialEq)]
 enum BGPriority {
@@ -11,9 +10,10 @@ enum BGPriority {
     Color123,
 }
 
+#[allow(dead_code)]
 pub struct PPU {
-    vram: [u8; VRAM_SIZE as usize],   // VRAM
-    oam: [u8; OAM_SIZE as usize],     // OAM
+    vram: [u8; VRAM_SIZE ],           // VRAM
+    oam: [u8; OAM_SIZE],              // OAM
     lcdc: u8,                         // LCD Control
     stat: u8,                         // Status
     scy: u8,                          // Scroll Y
@@ -29,11 +29,12 @@ pub struct PPU {
     pub irq_vblank: bool,             // V-Blank interrupt request
     pub irq_lcdc: bool,               // LCDC interrupt request
     cnt: u16,                         // Elapsed clocks in current mode
-    frame_buffer: [u8; (SCREEN_W as usize) * (SCREEN_H as usize)],  // Frame buffer
+    frame_buffer: [u8; SCREEN_WH],    // Frame buffer
     scanline: [u8; SCREEN_W as usize], // Current scanline
     bg_prio: [BGPriority; SCREEN_W as usize],  // Background priority
-}
 
+    cgb_render: CgbPalette,
+}
 
 impl PPU {
     // VRAM map
@@ -45,8 +46,8 @@ impl PPU {
 
     pub fn new() -> Self {
         PPU {
-            vram: [0; VRAM_SIZE as usize],
-            oam: [0; OAM_SIZE as usize],
+            vram: [0; VRAM_SIZE ],
+            oam: [0; OAM_SIZE],
             lcdc: 0x80,
             stat: 0x02,
             scy: 0,
@@ -65,6 +66,8 @@ impl PPU {
             scanline: [0; SCREEN_W as usize],
             frame_buffer: [0; (SCREEN_W as usize) * (SCREEN_H as usize)],
             bg_prio: [BGPriority::Color0; SCREEN_W as usize],
+
+            cgb_render: CgbPalette::new(),
         }
     }
 
@@ -120,10 +123,10 @@ impl PPU {
     /// Converts color number to brightness using palette.
     fn map_color(&self, color_no: u8, palette: u8) -> u8 {
         match (palette >> (color_no << 1)) & 0x03 {
-            0 => 0xFF,
-            1 => 0xAA,
-            2 => 0x55,
-            3 | _ => 0x00,
+            0 => 0xFF,        // 白
+            1 => 0xAA,        // ライトグレー
+            2 => 0x55,        // ダークグレー
+            3 | _ => 0x00,    // 黒
         }
     }
 
@@ -324,7 +327,7 @@ impl PPU {
     }
 }
 
-impl IODevice for PPU {
+impl IO for PPU {
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
             // VRAM

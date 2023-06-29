@@ -1,11 +1,5 @@
 use std::env;
 use std::path::PathBuf;
-
-#[macro_use]
-extern crate log;
-extern crate env_logger;
-extern crate sdl2;
-
 use std::thread;
 use std::time;
 
@@ -21,6 +15,13 @@ mod mmu;
 mod ppu;
 mod timer;
 mod cgb;
+
+use common::*;
+
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+extern crate sdl2;
 
 fn translate_keycode(key: Keycode) -> Option<gamepad::Key> {
     match key {
@@ -59,12 +60,18 @@ fn save_fname() -> String {
 }
 
 fn main() {
+    // ============================================================================
+    // Debug Init
+    // ============================================================================
     env_logger::init();
 
+    // ============================================================================
+    // SDL2 Init
+    // ============================================================================
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("RSGB -Rust GB Emu-", 320, 288)
+        .window("RSGB -Rust GB Emu-", SCREEN_W as u32 * 2, SCREEN_H as u32 * 2)
         .position_centered()
         .build()
         .unwrap();
@@ -74,12 +81,20 @@ fn main() {
         .create_texture_streaming(PixelFormatEnum::RGB24, 160, 144)
         .unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
+
+    // ============================================================================
+    // App Init
+    // ============================================================================
     let mut cpu = cpu::CPU::new(&rom_fname());
     cpu.mmu.cartridge.read_save_file(&save_fname());
 
+    // ============================================================================
     // CGB Unlock
-    let cgb_flg = cpu.mmu.cartridge.get_cgb_mode();
+    // ============================================================================
+    let cgb_flg: u8 = cpu.mmu.cartridge.get_cgb_mode();
     cpu.mmu.cgb.cgb_unlock(cgb_flg);
+
+    // ============================================================================
 
     'running: loop {
         let now = time::Instant::now();

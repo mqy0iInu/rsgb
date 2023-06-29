@@ -1,4 +1,4 @@
-use common::IODevice;
+use common::IO;
 
 pub struct GamePad {
     key: u8,
@@ -56,7 +56,7 @@ impl GamePad {
     }
 }
 
-impl IODevice for GamePad {
+impl IO for GamePad {
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
             0xFF00 => self.key = (self.key & 0xcf) | (val & 0x30),

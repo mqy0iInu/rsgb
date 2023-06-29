@@ -1,4 +1,4 @@
-use common::IODevice;
+use common::IO;
 
 const DIV_ADDR: u16 = 0xFF04;
 const TIMA_ADDR: u16 = 0xFF05;
@@ -25,7 +25,7 @@ impl Timer {
     }
 }
 
-impl IODevice for Timer {
+impl IO for Timer {
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
             DIV_ADDR => self.cnt = 0,
