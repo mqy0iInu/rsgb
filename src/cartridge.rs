@@ -1,25 +1,29 @@
 use std::fs::File;
 use std::io::{Read, Write};
+use common::*;
 
-use common::IODevice;
-
-pub struct Catridge {
+#[allow(dead_code)]
+pub struct Cartridge {
     rom: Vec<u8>,
     ram: Vec<u8>,
-    #[allow(dead_code)]
     mbc_type: u8,
     ram_enable: bool,
     bank_no_upper: u8,
     bank_no_lower: u8,
     num_rom_banks: u8,
     mode: bool,
+    cgb_flg: u8,
 }
 
-impl Catridge {
+impl Cartridge {
     pub fn new(fname: &str) -> Self {
         let mut rom = Vec::new();
         let mut file = File::open(fname).unwrap();
         file.read_to_end(&mut rom).unwrap();
+
+        // CGBフラグ(0x143バイト目)
+        let cgb_flg: u8 = rom[0x0143];
+        info!("CGB Flag: {:#02X}", cgb_flg);
 
         let rom_size: usize = match rom[0x0148] {
             0 => 32 * 1024,
@@ -89,7 +93,7 @@ impl Catridge {
         info!("RAM size {}KB", ram_size / 1024);
         info!("MBC type {}", mbc_name);
 
-        Catridge {
+        Cartridge {
             rom: rom,
             ram: vec![0; ram_size],
             mbc_type: mbc_type,
@@ -98,6 +102,7 @@ impl Catridge {
             bank_no_lower: 0,
             num_rom_banks: num_rom_banks,
             mode: false,
+            cgb_flg: cgb_flg,
         }
     }
 
@@ -140,9 +145,13 @@ impl Catridge {
             file.write_all(&mut self.ram).unwrap();
         }
     }
+
+    pub fn get_cgb_mode(&self) -> u8 {
+        self.cgb_flg
+    }
 }
 
-impl IODevice for Catridge {
+impl IODevice for Cartridge {
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
             // RAM enable

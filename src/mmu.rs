@@ -1,4 +1,5 @@
-use catridge::Catridge;
+use cgb::CGB;
+use cartridge::Cartridge;
 use common::IODevice;
 use gamepad::GamePad;
 use ppu::PPU;
@@ -10,7 +11,8 @@ const WRAM_SIZE: u16 = 8 * 1024;
 const HRAM_SIZE: u16 = 0x7F;
 
 pub struct MMU {
-    pub catridge: Catridge,
+    pub cgb: CGB,
+    pub cartridge: Cartridge,
     wram: [u8; WRAM_SIZE as usize],
     hram: [u8; HRAM_SIZE as usize],
     pub gamepad: GamePad,
@@ -21,10 +23,10 @@ pub struct MMU {
 }
 
 impl MMU {
-    /// Creates a new `MMU`.
     pub fn new(rom_name: &str) -> Self {
         MMU {
-            catridge: Catridge::new(rom_name),
+            cartridge: Cartridge::new(rom_name),
+            cgb: CGB::new(),
             wram: [0; WRAM_SIZE as usize],
             hram: [0; HRAM_SIZE as usize],
             gamepad: GamePad::new(),
@@ -53,11 +55,11 @@ impl MMU {
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
             // ROM
-            0x0000..=0x7FFF => self.catridge.write(addr, val),
+            0x0000..=0x7FFF => self.cartridge.write(addr, val),
             // VRAM
             0x8000..=0x9FFF => self.ppu.write(addr, val),
             // External RAM
-            0xA000..=0xBFFF => self.catridge.write(addr, val),
+            0xA000..=0xBFFF => self.cartridge.write(addr, val),
             // WRAM
             0xC000..=0xDFFF => self.wram[(addr & 0x1FFF) as usize] = val,
             // WRAM Mirror
@@ -86,11 +88,11 @@ impl MMU {
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
             // ROM
-            0x0000..=0x7FFF => self.catridge.read(addr),
+            0x0000..=0x7FFF => self.cartridge.read(addr),
             // VRAM
             0x8000..=0x9FFF => self.ppu.read(addr),
             // External wram
-            0xA000..=0xBFFF => self.catridge.read(addr),
+            0xA000..=0xBFFF => self.cartridge.read(addr),
             // wram
             0xC000..=0xDFFF => self.wram[(addr & 0x1FFF) as usize],
             // Echo wram
@@ -115,7 +117,7 @@ impl MMU {
 
     /// Progresses the clock for a given number of ticks.
     pub fn update(&mut self, tick: u8) {
-        self.catridge.update(tick);
+        self.cartridge.update(tick);
         self.ppu.update(tick);
         self.timer.update(tick);
         self.gamepad.update(tick);

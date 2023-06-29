@@ -13,7 +13,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 
-mod catridge;
+mod cartridge;
 mod cpu;
 mod common;
 mod gamepad;
@@ -75,7 +75,11 @@ fn main() {
         .unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut cpu = cpu::CPU::new(&rom_fname());
-    cpu.mmu.catridge.read_save_file(&save_fname());
+    cpu.mmu.cartridge.read_save_file(&save_fname());
+
+    // CGB Unlock
+    let cgb_flg = cpu.mmu.cartridge.get_cgb_mode();
+    cpu.mmu.cgb.cgb_unlock(cgb_flg);
 
     'running: loop {
         let now = time::Instant::now();
@@ -134,5 +138,5 @@ fn main() {
         }
     }
 
-    cpu.mmu.catridge.write_save_file(&save_fname());
+    cpu.mmu.cartridge.write_save_file(&save_fname());
 }
