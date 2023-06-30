@@ -1,7 +1,9 @@
 use common::*;
 // use  cgb::*;
 
-const VRAM_SIZE: usize = 8 * 1024;
+// const VRAM_SIZE: usize = 8 * 1024;  // DMG
+const VRAM_SIZE: usize = 32 * 1024; // CGB (8KB * 2バンク)
+const VRAM_BANK_SIZE: u16 = 8 * 1024;
 const OAM_SIZE: usize = 0xA0;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -12,7 +14,7 @@ enum BGPriority {
 
 #[allow(dead_code)]
 pub struct PPU {
-    vram: [u8; VRAM_SIZE ],           // VRAM
+    vram: [u8; VRAM_SIZE],            // VRAM
     oam: [u8; OAM_SIZE],              // OAM
     lcdc: u8,                         // LCD Control
     stat: u8,                         // Status
@@ -32,6 +34,9 @@ pub struct PPU {
     frame_buffer: [u8; SCREEN_WH],    // Frame buffer
     scanline: [u8; SCREEN_W as usize], // Current scanline
     bg_prio: [BGPriority; SCREEN_W as usize],  // Background priority
+
+    pub cgb_unlock_flg: bool,          // CGB動作フラグ
+    pub vram_bank: u8,                 // VRAM バンク (CGB Only)
 }
 
 impl PPU {
@@ -64,6 +69,9 @@ impl PPU {
             scanline: [0; SCREEN_W as usize],
             frame_buffer: [0; (SCREEN_W as usize) * (SCREEN_H as usize)],
             bg_prio: [BGPriority::Color0; SCREEN_W as usize],
+
+            cgb_unlock_flg: false,
+            vram_bank: 0,
         }
     }
 
@@ -79,10 +87,18 @@ impl PPU {
         };
         let row_addr = tile_data_addr + (offset_y << 1) as u16;
 
-        let tile0 = self.vram[row_addr as usize];
-        let tile1 = self.vram[(row_addr + 1) as usize];
+        let mut _tile0: u8 = 0;
+        let mut _tile1: u8 = 0;
+        if self.cgb_unlock_flg != false {
+            let offset = VRAM_BANK_SIZE as usize * self.vram_bank as usize;
+            _tile0 = self.vram[row_addr as usize + offset];
+            _tile1 = self.vram[(row_addr + 1) as usize + offset];
+        }else{
+            _tile0 = self.vram[row_addr as usize];
+            _tile1 = self.vram[(row_addr + 1) as usize];
+        }
 
-        (tile0, tile1)
+        (_tile0, _tile1)
     }
 
     /// Fetches BG or Window tile data from VRAM.
@@ -95,9 +111,16 @@ impl PPU {
     ) -> (u8, u8) {
         // Fetch tile index from tile map
         let tile_map_addr = tile_map_base | ((tile_x & 0x1F) as u16 + ((tile_y as u16) << 5));
-        let tile_no = self.vram[tile_map_addr as usize];
 
-        self.fetch_tile(tile_no, offset_y, self.lcdc & 0x10 > 0)
+        let mut _tile_no: u8 = 0;
+        if self.cgb_unlock_flg != false {
+            let offset = VRAM_BANK_SIZE as usize * self.vram_bank as usize;
+            _tile_no = self.vram[tile_map_addr as usize + offset];
+        }else{
+            _tile_no = self.vram[tile_map_addr as usize];
+        }
+
+        self.fetch_tile(_tile_no, offset_y, self.lcdc & 0x10 > 0)
     }
 
     /// Fetches BG tile data from VRAM.
@@ -330,7 +353,12 @@ impl IO for PPU {
             0x8000..=0x9FFF => {
                 // VRAM is inaccessible during pixel transfer
                 if self.stat & 0x03 != 3 {
-                    self.vram[(addr & 0x1FFF) as usize] = val
+                    if self.cgb_unlock_flg != false {
+                        let offset = VRAM_BANK_SIZE as usize * self.vram_bank as usize;
+                        self.vram[(addr & 0x1FFF) as usize + offset] = val
+                    }else{
+                        self.vram[(addr & 0x1FFF) as usize] = val
+                    }
                 }
             }
 
@@ -342,7 +370,7 @@ impl IO for PPU {
                 }
             }
 
-            // IO registers
+            // I/O registers
             0xFF40 => {
                 if self.lcdc & 0x80 != val & 0x80 {
                     self.ly = 0;
@@ -381,7 +409,12 @@ impl IO for PPU {
             0x8000..=0x9FFF => {
                 // VRAM is inaccessible during pixel transfer
                 if self.stat & 0x03 != 3 {
-                    self.vram[(addr & 0x1FFF) as usize]
+                    if self.cgb_unlock_flg != false {
+                        let offset = VRAM_BANK_SIZE as usize * self.vram_bank as usize;
+                        self.vram[(addr & 0x1FFF) as usize + offset]
+                    }else{
+                        self.vram[(addr & 0x1FFF) as usize]
+                    }
                 } else {
                     0xFF
                 }

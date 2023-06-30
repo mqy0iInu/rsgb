@@ -8,7 +8,9 @@ use timer::Timer;
 use ppu::PPU;
 
 // WRAM(Work RAM)
-const WRAM_SIZE: u16 = 8 * 1024;
+// const WRAM_SIZE: u16 = 8 * 1024;    // DMG
+const WRAM_SIZE: u16 = 32 * 1024;   // CGB (4KB * 8バンク)
+const WRAM_BANK_SIZE: u16 = 4 * 1024;
 // HRAM(High RAM)
 const HRAM_SIZE: u16 = 0x7F;
 
@@ -52,9 +54,23 @@ impl MMU {
             // External RAM
             0xA000..=0xBFFF => self.cartridge.write(addr, val),
             // WRAM
-            0xC000..=0xDFFF => self.wram[(addr & 0x1FFF) as usize] = val,
+            0xC000..=0xDFFF => {
+                if self.cgb.unlock_flg != false {
+                    let offset = WRAM_BANK_SIZE as usize * self.cgb.svbk as usize;
+                    self.wram[(addr & 0x1FFF) as usize + offset] = val;
+                }else{
+                    self.wram[(addr & 0x1FFF) as usize] = val;
+                }
+            },
             // Echo RAM
-            0xE000..=0xFDFF => self.wram[((addr - WRAM_SIZE) & 0x1FFF) as usize] = val,
+            0xE000..=0xFDFF => {
+                if self.cgb.unlock_flg != false {
+                    let offset: usize = WRAM_BANK_SIZE as usize * self.cgb.svbk as usize;
+                    self.wram[((addr - WRAM_SIZE) & 0x1FFF) as usize + offset] = val;
+                }else{
+                    self.wram[((addr - WRAM_SIZE) & 0x1FFF) as usize] = val;
+                }
+            },
             // OAM
             0xFE00..=0xFE9F => self.ppu.write(addr, val),
             // GamePad
@@ -103,9 +119,23 @@ impl MMU {
             // External RAM
             0xA000..=0xBFFF => self.cartridge.read(addr),
             // WRAM
-            0xC000..=0xDFFF => self.wram[(addr & 0x1FFF) as usize],
+            0xC000..=0xDFFF => {
+                if self.cgb.unlock_flg != false {
+                    let offset = WRAM_BANK_SIZE as usize * self.cgb.svbk as usize;
+                    self.wram[(addr & 0x1FFF) as usize + offset]
+                }else{
+                    self.wram[(addr & 0x1FFF) as usize]
+                }
+            },
             // Echo RAM
-            0xE000..=0xFDFF => self.wram[((addr - WRAM_SIZE) & 0x1FFF) as usize],
+            0xE000..=0xFDFF => {
+                if self.cgb.unlock_flg != false {
+                    let offset: usize = WRAM_BANK_SIZE as usize * self.cgb.svbk as usize;
+                    self.wram[((addr - WRAM_SIZE) & 0x1FFF) as usize + offset]
+                }else{
+                    self.wram[((addr - WRAM_SIZE) & 0x1FFF) as usize]
+                }
+            },
             // OAM
             0xFE00..=0xFE9F => self.ppu.read(addr),
             // GamePad
@@ -135,6 +165,9 @@ impl MMU {
     }
 
     pub fn update(&mut self, tick: u8) {
+        self.ppu.cgb_unlock_flg = self.cgb.unlock_flg;
+        self.ppu.vram_bank = self.cgb.vbk;
+
         self.bios.update(tick);
         self.cgb.update(tick);
         self.cartridge.update(tick);
@@ -143,6 +176,11 @@ impl MMU {
         self.gamepad.update(tick);
         self.serial.update(tick);
 
+        // IRQのポーリング
+        self.irq_poll();
+    }
+
+    fn irq_poll(&mut self) {
         if self.ppu.irq_vblank {
             self.int_flag |= 0x01;
             self.ppu.irq_vblank = false;

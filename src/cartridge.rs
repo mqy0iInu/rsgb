@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use common::*;
 
+const ROM_BANK_SIZE: usize = 16 * 1024;
+const RAM_BANK_SIZE: usize = 8 * 1024;
 #[allow(dead_code)]
 pub struct Cartridge {
     rom: Vec<u8>,
@@ -162,12 +164,12 @@ impl IO for Cartridge {
             0x4000..=0x5FFF => self.bank_no_upper = val & 0x03,
             // ROM/RAM mode select
             0x6000..=0x7FFF => self.mode = val & 0x01 > 0,
-            // RAM bank 00-03
+            // RAM Bank 01~nn
             0xA000..=0xBFFF => {
                 if !self.ram_enable {
                     return;
                 }
-                let offset = (8 * 1024) * self.ram_bank_no() as usize;
+                let offset = RAM_BANK_SIZE * self.ram_bank_no() as usize;
                 self.ram[(addr & 0x1FFF) as usize + offset] = val
             }
             _ => unreachable!("Unexpected address: 0x{:04X}", addr),
@@ -176,24 +178,26 @@ impl IO for Cartridge {
 
     fn read(&mut self, addr: u16) -> u8 {
         match addr {
-            // ROM bank 00
+            // ROM Bank 00
             0x0000..=0x3FFF => self.rom[addr as usize],
             // ROM bank 01-7F
             0x4000..=0x7FFF => {
-                let offset = (16 * 1024) * self.rom_bank_no() as usize;
+                let offset = ROM_BANK_SIZE * self.rom_bank_no() as usize;
                 self.rom[(addr & 0x3FFF) as usize + offset]
             }
-            // RAM bank 00-03
+            // RAM Bank 01~nn
             0xa000..=0xBFFF => {
                 if !self.ram_enable {
                     return 0xFF;
                 }
-                let offset = (8 * 1024) * self.ram_bank_no() as usize;
+                let offset = RAM_BANK_SIZE * self.ram_bank_no() as usize;
                 self.ram[(addr & 0x1FFF) as usize + offset]
             }
             _ => unreachable!("Unexpected address: 0x{:04X}", addr),
         }
     }
 
-    fn update(&mut self, _tick: u8) {}
+    fn update(&mut self, _tick: u8) {
+        // NOP
+    }
 }

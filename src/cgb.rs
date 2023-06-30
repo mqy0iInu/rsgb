@@ -18,29 +18,29 @@ const CGB_MODE_NONE: u8 = 0xFF;
 // https://gbdev.io/pandocs/Hardware_Reg_List.html?highlight=bcps#hardware-registers
 #[allow(dead_code)]
 pub struct CGB {
-    hdma1: u8,          // (Addr $FF51 W) VRAM DMA ソース（上位、下位） [書き込みのみ]
-    hdma2: u8,          // (Addr $FF52 W) VRAM DMA ソース（上位、下位） [書き込みのみ]
-    hdma3: u8,          // (Addr $FF53 W) VRAM DMA 宛先（上位、下位） [書き込みのみ]
-    hdma4: u8,          // (Addr $FF54 W) VRAM DMA 宛先（上位、下位） [書き込みのみ]
-    hdma5: u8,          // (Addr $FF55 W) VRAM DMA 長さ/モード/開始
-    vbk: u8,            // (Addr $FF4F R/W) VRAM バンク
-    key_1: u8,          // (Addr $FF4D R/W) スピードスイッチの準備
-    rp: u8,             // (Addr $FF56 R/W) 赤外線通信ポート
-    opri: u8,           // (Addr $FF6C R/W) オブジェクト優先モード
-    svbk: u8,           // (Addr $FF70 R/W) WRAM バンク
-    bcps: u8,           // (Addr $FF68 R/W) 背景色パレット仕様
-    bgpi: u8,           // (Addr $FF68 R/W) 背景パレット インデックス
-    bcpd: u8,           // (Addr $FF69 R/W) 背景色パレットデータ
-    bgpd: u8,           // (Addr $FF69 R/W) 背景パレットデータ
-    ocps: u8,           // (Addr $FF6A R/W) OBJ カラーパレット仕様
-    obpi: u8,           // (Addr $FF6A R/W) OBJ パレットインデックス
-    ocpd: u8,           // (Addr $FF6B R/W) OBJ カラーパレットデータ
-    obpd: u8,           // (Addr $FF6B R/W) OBJ パレットデータ
-    pcm12: u8,          // (Addr $FF76 R) Audio digital outputs 1 & 2
-    pcm34: u8,          // (Addr $FF77 R) Audio digital outputs 3 & 4
+    pub hdma1: u8,          // (Addr $FF51 W) VRAM DMA ソース（上位）
+    pub hdma2: u8,          // (Addr $FF52 W) VRAM DMA ソース（下位）
+    pub hdma3: u8,          // (Addr $FF53 W) VRAM DMA 宛先（上位）
+    pub hdma4: u8,          // (Addr $FF54 W) VRAM DMA 宛先（下位）
+    pub hdma5: u8,          // (Addr $FF55 W) VRAM DMA 長さ/モード/開始
+    pub vbk: u8,            // (Addr $FF4F R/W) VRAM バンク
+    pub key_1: u8,          // (Addr $FF4D R/W) スピードスイッチの準備
+    pub rp: u8,             // (Addr $FF56 R/W) 赤外線通信ポート
+    pub opri: u8,           // (Addr $FF6C R/W) オブジェクト優先モード
+    pub svbk: u8,           // (Addr $FF70 R/W) WRAM バンク
+    pub bcps: u8,           // (Addr $FF68 R/W) 背景色パレット仕様
+    pub bgpi: u8,           // (Addr $FF68 R/W) 背景パレット インデックス
+    pub bcpd: u8,           // (Addr $FF69 R/W) 背景色パレットデータ
+    pub bgpd: u8,           // (Addr $FF69 R/W) 背景パレットデータ
+    pub ocps: u8,           // (Addr $FF6A R/W) OBJ カラーパレット仕様
+    pub obpi: u8,           // (Addr $FF6A R/W) OBJ パレットインデックス
+    pub ocpd: u8,           // (Addr $FF6B R/W) OBJ カラーパレットデータ
+    pub obpd: u8,           // (Addr $FF6B R/W) OBJ パレットデータ
+    pub pcm12: u8,          // (Addr $FF76 R) Audio digital outputs 1 & 2
+    pub pcm34: u8,          // (Addr $FF77 R) Audio digital outputs 3 & 4
 
-    unlock_flg: bool,   // アンロックフラグ
-    cgb_mode: u8,       // CGBモード
+    pub unlock_flg: bool,   // アンロックフラグ
+    pub cgb_mode: u8,       // CGBモード
 }
 
 impl CGB {
