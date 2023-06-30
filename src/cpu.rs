@@ -14,16 +14,19 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new(rom_name: &str) -> Self {
+    pub fn new(bios_path: &str, rom_path: &str) -> Self {
         CPU {
-            mmu: MMU::new(rom_name),
+            mmu: MMU::new(bios_path, rom_path),
             reg_a: 0, reg_f: 0,
             reg_b: 0, reg_c: 0,
             reg_d: 0, reg_e: 0,
             reg_h: 0, reg_l: 0,
             ime: false,
             halted: false,
-            pc: 0x100,
+
+            // pc: 0, // BIOS
+            pc: 0x0100, // BIOS Skip
+
             sp: 0,
             tick: 0,
         }
@@ -276,7 +279,7 @@ impl CPU {
     fn ld_r16_d16(&mut self, reg: u8) {
         let val = self.read_d16();
 
-        trace!("LD {}, 0x{:04x}", Self::reg16_to_string(reg), val);
+        trace!("LD {}, 0x{:04X}", Self::reg16_to_string(reg), val);
 
         self.write_r16(reg, val);
     }
@@ -286,7 +289,7 @@ impl CPU {
         let addr = self.read_d16();
         let sp = self.sp;
 
-        trace!("LD (0x{:04x}), SP", addr);
+        trace!("LD (0x{:04X}), SP", addr);
 
         self.write_mem16(addr, sp);
     }
@@ -889,7 +892,7 @@ impl CPU {
     fn jp_cc_d8(&mut self, cci: u8) {
         let addr = self.read_d16();
 
-        trace!("JP {}, 0x{:04x}", Self::cc_to_string(cci), addr);
+        trace!("JP {}, 0x{:04X}", Self::cc_to_string(cci), addr);
 
         if self.cc(cci) {
             self._jp(addr);
@@ -900,7 +903,7 @@ impl CPU {
     fn jp_d16(&mut self) {
         let address = self.read_d16();
 
-        trace!("JP 0x{:04x}", address);
+        trace!("JP 0x{:04X}", address);
 
         self._jp(address);
     }
@@ -1036,7 +1039,7 @@ impl CPU {
     fn call_d16(&mut self) {
         let addr = self.read_d16();
 
-        trace!("CALL 0x{:04x}", addr);
+        trace!("CALL 0x{:04X}", addr);
 
         self._call(addr);
     }
@@ -1045,7 +1048,7 @@ impl CPU {
     fn call_cc_d16(&mut self, cci: u8) {
         let addr = self.read_d16();
 
-        trace!("CALL {}, 0x{:04x}", Self::cc_to_string(cci), addr);
+        trace!("CALL {}, 0x{:04X}", Self::cc_to_string(cci), addr);
 
         if self.cc(cci) {
             self._call(addr);
@@ -1227,7 +1230,7 @@ impl CPU {
         let addr = self.read_d16();
         let reg_a = self.reg_a;
 
-        trace!("LD (0x{:04x}), A", addr);
+        trace!("LD (0x{:04X}), A", addr);
 
         self.write_mem8(addr, reg_a);
     }
@@ -1235,7 +1238,7 @@ impl CPU {
     fn ld_a_ind_d16(&mut self) {
         let addr = self.read_d16();
 
-        trace!("LD A, (0x{:04x})", addr);
+        trace!("LD A, (0x{:04X})", addr);
 
         self.reg_a = self.read_mem8(addr);
     }
@@ -1520,9 +1523,9 @@ impl CPU {
     #[allow(dead_code)]
     pub fn dump(&self) {
         println!("CPU State:");
-        println!("PC: 0x{:04x}  SP: 0x{:04x}", self.pc, self.sp);
-        println!("AF: 0x{:04x}  BC: 0x{:04x}", self.af(), self.bc());
-        println!("DE: 0x{:04x}  HL: 0x{:04x}", self.de(), self.hl());
+        println!("PC: 0x{:04X}  SP: 0x{:04X}", self.pc, self.sp);
+        println!("AF: 0x{:04X}  BC: 0x{:04X}", self.af(), self.bc());
+        println!("DE: 0x{:04X}  HL: 0x{:04X}", self.de(), self.hl());
         println!("T:  {}", self.tick);
     }
 }

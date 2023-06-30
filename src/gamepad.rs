@@ -60,11 +60,11 @@ impl IO for GamePad {
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
             0xFF00 => self.key = (self.key & 0xcf) | (val & 0x30),
-            _ => unreachable!("Unexpected address: 0x{:04x}", addr),
+            _ => unreachable!("Unexpected address: 0x{:04X}", addr),
         }
     }
 
-    fn read(&self, addr: u16) -> u8 {
+    fn read(&mut self, addr: u16) -> u8 {
         match addr {
             0xFF00 => {
                 // Direction keys selected
@@ -77,7 +77,7 @@ impl IO for GamePad {
                     self.key
                 }
             }
-            _ => unreachable!("Unexpected address: 0x{:04x}", addr),
+            _ => unreachable!("Unexpected address: 0x{:04X}", addr),
         }
     }
 

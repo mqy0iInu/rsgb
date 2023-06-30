@@ -7,6 +7,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 
+mod bios;
 mod cartridge;
 mod cpu;
 mod common;
@@ -85,7 +86,10 @@ fn main() {
     // ============================================================================
     // App Init
     // ============================================================================
-    let mut cpu = cpu::CPU::new(&rom_fname());
+    // FIXME 開発時はパス固定
+    const BIOS_PATH: &str = "rom/bios/GB/gb_bios.bin";
+
+    let mut cpu: cpu::CPU = cpu::CPU::new(BIOS_PATH, &rom_fname());
     cpu.mmu.cartridge.read_save_file(&save_fname());
 
     // ============================================================================

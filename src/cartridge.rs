@@ -163,18 +163,18 @@ impl IO for Cartridge {
             // ROM/RAM mode select
             0x6000..=0x7FFF => self.mode = val & 0x01 > 0,
             // RAM bank 00-03
-            0xa000..=0xBFFF => {
+            0xA000..=0xBFFF => {
                 if !self.ram_enable {
                     return;
                 }
                 let offset = (8 * 1024) * self.ram_bank_no() as usize;
                 self.ram[(addr & 0x1FFF) as usize + offset] = val
             }
-            _ => unreachable!("Unexpected address: 0x{:04x}", addr),
+            _ => unreachable!("Unexpected address: 0x{:04X}", addr),
         }
     }
 
-    fn read(&self, addr: u16) -> u8 {
+    fn read(&mut self, addr: u16) -> u8 {
         match addr {
             // ROM bank 00
             0x0000..=0x3FFF => self.rom[addr as usize],
@@ -184,14 +184,14 @@ impl IO for Cartridge {
                 self.rom[(addr & 0x3FFF) as usize + offset]
             }
             // RAM bank 00-03
-            0xa000..=0xbfff => {
+            0xa000..=0xBFFF => {
                 if !self.ram_enable {
                     return 0xFF;
                 }
                 let offset = (8 * 1024) * self.ram_bank_no() as usize;
                 self.ram[(addr & 0x1FFF) as usize + offset]
             }
-            _ => unreachable!("Unexpected address: 0x{:04x}", addr),
+            _ => unreachable!("Unexpected address: 0x{:04X}", addr),
         }
     }
 

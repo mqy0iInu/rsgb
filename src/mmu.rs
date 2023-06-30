@@ -1,3 +1,4 @@
+use bios::BIOS;
 use cgb::CGB;
 use cartridge::Cartridge;
 use common::IO;
@@ -11,8 +12,9 @@ const WRAM_SIZE: u16 = 8 * 1024;
 const HRAM_SIZE: u16 = 0x7F;
 
 pub struct MMU {
-    pub cgb: CGB,
+    pub bios: BIOS,
     pub cartridge: Cartridge,
+    pub cgb: CGB,
     wram: [u8; WRAM_SIZE as usize],
     hram: [u8; HRAM_SIZE as usize],
     pub gamepad: GamePad,
@@ -23,9 +25,10 @@ pub struct MMU {
 }
 
 impl MMU {
-    pub fn new(rom_name: &str) -> Self {
+    pub fn new(bios_path: &str, rom_path: &str) -> Self {
         MMU {
-            cartridge: Cartridge::new(rom_name),
+            bios: BIOS::new(bios_path),
+            cartridge: Cartridge::new(rom_path),
             cgb: CGB::new(),
             wram: [0; WRAM_SIZE as usize],
             hram: [0; HRAM_SIZE as usize],
@@ -37,14 +40,14 @@ impl MMU {
         }
     }
 
-    // TODO OAM DMA Timing
     fn do_dma(&mut self, val: u8) {
-        if val < 0x80 || 0xdf < val {
+        let src_base = (val as u16) << 8;
+        let dst_base = 0xFE00;
+
+        if val < 0x80 || 0xDF < val {
+            // TODO OAM DMA Timing
             panic!("Invalid DMA source address")
         }
-
-        let src_base = (val as u16) << 8;
-        let dst_base = 0xfe00;
 
         for i in 0..0xA0 {
             let tmp = self.read(src_base | i);
@@ -62,7 +65,7 @@ impl MMU {
             0xA000..=0xBFFF => self.cartridge.write(addr, val),
             // WRAM
             0xC000..=0xDFFF => self.wram[(addr & 0x1FFF) as usize] = val,
-            // WRAM Mirror
+            // Echo RAM
             0xE000..=0xFDFF => self.wram[((addr - WRAM_SIZE) & 0x1FFF) as usize] = val,
             // OAM
             0xFE00..=0xFE9F => self.ppu.write(addr, val),
@@ -85,17 +88,28 @@ impl MMU {
     }
 
     /// Reads a byte from an address.
-    pub fn read(&self, addr: u16) -> u8 {
+    pub fn read(&mut self, addr: u16) -> u8 {
         match addr {
-            // ROM
-            0x0000..=0x7FFF => self.cartridge.read(addr),
+            // BIOS or ROM
+            0x0000..=0x7FFF => {
+                if self.bios.is_boot != false {
+                    if addr > 0x00FF {
+                        self.bios.is_boot = false;
+                        self.cartridge.read(addr)
+                    }else{
+                        self.bios.read(addr)
+                    }
+                }else{
+                    self.cartridge.read(addr)
+                }
+            },
             // VRAM
             0x8000..=0x9FFF => self.ppu.read(addr),
-            // External wram
+            // External RAM
             0xA000..=0xBFFF => self.cartridge.read(addr),
-            // wram
+            // WRAM
             0xC000..=0xDFFF => self.wram[(addr & 0x1FFF) as usize],
-            // Echo wram
+            // Echo RAM
             0xE000..=0xFDFF => self.wram[((addr - WRAM_SIZE) & 0x1FFF) as usize],
             // OAM
             0xFE00..=0xFE9F => self.ppu.read(addr),

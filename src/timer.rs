@@ -32,17 +32,17 @@ impl IO for Timer {
             TIMA_ADDR => self.tima = val,
             TMA_ADDR => self.tma = val,
             TAC_ADDR => self.tac = val & 0x7,
-            _ => panic!("[ERR] Timer Write, Addr: 0x{:04x}", addr),
+            _ => panic!("[ERR] Timer Write, Addr: 0x{:04X}", addr),
         }
     }
 
-    fn read(&self, addr: u16) -> u8 {
+    fn read(&mut self, addr: u16) -> u8 {
         match addr {
             DIV_ADDR => (self.cnt >> 8) as u8,
             TIMA_ADDR => self.tima,
             TMA_ADDR => self.tma,
             TAC_ADDR => self.tac,
-            _ => panic!("[ERR] Timer Read, Addr: 0x{:04x}", addr),
+            _ => panic!("[ERR] Timer Read, Addr: 0x{:04X}", addr),
         }
     }
 

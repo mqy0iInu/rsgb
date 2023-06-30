@@ -375,11 +375,11 @@ impl IO for PPU {
             0xFF4A => self.wy = val,
             0xFF4B => self.wx = val,
 
-            _ => unreachable!("Unexpected address: 0x{:04x}", addr),
+            _ => unreachable!("Unexpected address: 0x{:04X}", addr),
         }
     }
 
-    fn read(&self, addr: u16) -> u8 {
+    fn read(&mut self, addr: u16) -> u8 {
         match addr {
             // VRAM
             0x8000..=0x9FFF => {
@@ -415,7 +415,7 @@ impl IO for PPU {
             0xFF4A => self.wy,
             0xFF4B => self.wx,
 
-            _ => unreachable!("Unexpected address: 0x{:04x}", addr),
+            _ => unreachable!("Unexpected address: 0x{:04X}", addr),
         }
     }
 
