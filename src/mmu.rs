@@ -73,16 +73,8 @@ impl MMU {
             0xFF40..=0xFF45 | 0xFF47..=0xFF4B => self.ppu.write(addr, val),
             // OAM DMA
             0xFF46 => self.oam_dma_start(val),
-            // VRAM Bank Select (CGB Only)
-            0xFF4F => self.cgb.vbk_write(val),
-            // TODO Boot ROM Set To Non-Zero To Disable
-            0xFF50 => todo!("Boot ROM Disable Write"),
-            // TODO VRAM DMA (CGB Only)
-            0xFF51..=0xFF55 => todo!("CGB VRAM DMA Write"),
-            // TODO BG / OBJ Palettes (CGB Only)
-            0xFF68..=0xFF69 => todo!("CGB BG / OBJ Palettes Write"),
-            // WRAM Bank Select (CGB Only)
-            0xFF70 => self.cgb.svbk_write(val),
+            // (CGB Only) I/O Reg
+            0xFF4D..=0xFF77 => self.cgb.write(addr, val),
             // HRAM
             0xFF80..=0xFFFE => self.hram[(addr & HRAM_SIZE) as usize] = val,
             // Interrupt Enable
@@ -132,18 +124,8 @@ impl MMU {
                                 0xFF },
             // PPU
             0xFF40..=0xFF45 | 0xFF47..=0xFF4B => self.ppu.read(addr),
-            // OAM DMA
-            0xFF46 => todo!("OAM DMA Read(${:#04X})", addr),
-            // TODO VRAM Bank Select (CGB Only)
-            0xFF4F => todo!("CGB VRAM Bank Select Read"),
-            // TODO Boot ROM Set To Non-Zero To Disable
-            0xFF50 => todo!("Boot ROM Disable Read"),
-            // TODO VRAM DMA (CGB Only)
-            0xFF51..=0xFF55 => todo!("CGB VRAM DMA Read"),
-            // TODO BG / OBJ Palettes (CGB Only)
-            0xFF68..=0xFF69 => todo!("CGB BG / OBJ Palettes Read"),
-            // TODO WRAM Bank Select (CGB Only)
-            0xFF70 => todo!("CGB WRAM Bank Select Read"),
+            // (CGB Only) I/O Reg
+            0xFF4D..=0xFF77 => self.cgb.read(addr),
             // HRAM
             0xFF80..=0xFFFE => self.hram[(addr & HRAM_SIZE) as usize],
             // Interrupt enable
@@ -153,10 +135,13 @@ impl MMU {
     }
 
     pub fn update(&mut self, tick: u8) {
+        self.bios.update(tick);
+        self.cgb.update(tick);
         self.cartridge.update(tick);
         self.ppu.update(tick);
         self.timer.update(tick);
         self.gamepad.update(tick);
+        self.serial.update(tick);
 
         if self.ppu.irq_vblank {
             self.int_flag |= 0x01;

@@ -32,7 +32,6 @@ impl IO for BIOS {
     fn read(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x00FF => {
-
                 self.bios[addr as usize]
             },
             _ => panic!("[ERR] BIOS Read Addr ${:#04X}", addr),

@@ -1,5 +1,5 @@
 use common::*;
-use  cgb::*;
+// use  cgb::*;
 
 const VRAM_SIZE: usize = 8 * 1024;
 const OAM_SIZE: usize = 0xA0;
@@ -32,8 +32,6 @@ pub struct PPU {
     frame_buffer: [u8; SCREEN_WH],    // Frame buffer
     scanline: [u8; SCREEN_W as usize], // Current scanline
     bg_prio: [BGPriority; SCREEN_W as usize],  // Background priority
-
-    cgb_render: CgbPalette,
 }
 
 impl PPU {
@@ -66,8 +64,6 @@ impl PPU {
             scanline: [0; SCREEN_W as usize],
             frame_buffer: [0; (SCREEN_W as usize) * (SCREEN_H as usize)],
             bg_prio: [BGPriority::Color0; SCREEN_W as usize],
-
-            cgb_render: CgbPalette::new(),
         }
     }
 
