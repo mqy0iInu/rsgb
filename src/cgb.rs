@@ -6,6 +6,7 @@ pub const CGB_MODE_NON_CGB: u8 = 0xAA;      // 非CGBモード（CGBモノクロ
 pub const CGB_MODE_NONE: u8 = 0xFF;
 pub const _CGB_GP_DMA: u8 = 0;
 pub const _CGB_H_BLANK_DMA: u8 = 1;
+pub const COLOR_PALETTE_SIZE: usize = 64;
 
 // [CGB対応]
 // TODO :MBC1（GB/GBC共通） ... テリーのワンダーランド
@@ -16,30 +17,30 @@ pub const _CGB_H_BLANK_DMA: u8 = 1;
 
 // [リファレンス]
 // https://gbdev.io/pandocs/CGB_Registers.html
+// https://gbdev.io/pandocs/Palettes.html#lcd-color-palettes-cgb-only
 // ↓レジスタ一覧
 // https://gbdev.io/pandocs/Hardware_Reg_List.html?highlight=bcps#hardware-registers
 #[allow(dead_code)]
 pub struct CGB {
+    pub key_1: u8,          // (Addr $FF4D R/W) スピードスイッチの準備
+    pub vbk: u8,            // (Addr $FF4F R/W) VRAM バンク
     pub hdma1: u8,          // (Addr $FF51 W) VRAM DMA ソース（上位）
     pub hdma2: u8,          // (Addr $FF52 W) VRAM DMA ソース（下位）
     pub hdma3: u8,          // (Addr $FF53 W) VRAM DMA 宛先（上位）
     pub hdma4: u8,          // (Addr $FF54 W) VRAM DMA 宛先（下位）
     pub hdma5: u8,          // (Addr $FF55 W) VRAM DMA 長さ/モード/開始
-    pub vbk: u8,            // (Addr $FF4F R/W) VRAM バンク
-    pub key_1: u8,          // (Addr $FF4D R/W) スピードスイッチの準備
     pub rp: u8,             // (Addr $FF56 R/W) 赤外線通信ポート
-    pub opri: u8,           // (Addr $FF6C R/W) オブジェクト優先モード
-    pub svbk: u8,           // (Addr $FF70 R/W) WRAM バンク
-    pub bcps: u8,           // (Addr $FF68 R/W) 背景色パレット仕様
     pub bgpi: u8,           // (Addr $FF68 R/W) 背景パレット インデックス
-    pub bcpd: u8,           // (Addr $FF69 R/W) 背景色パレットデータ
-    pub bgpd: u8,           // (Addr $FF69 R/W) 背景パレットデータ
+    pub bcps: u8,           // (Addr $FF68 R/W) 背景色パレット仕様
+    pub bg_color_palette: Vec<u8>, // (Addr $FF69 R/W) BCPD/BGPD
     pub ocps: u8,           // (Addr $FF6A R/W) OBJ カラーパレット仕様
     pub obpi: u8,           // (Addr $FF6A R/W) OBJ パレットインデックス
-    pub ocpd: u8,           // (Addr $FF6B R/W) OBJ カラーパレットデータ
-    pub obpd: u8,           // (Addr $FF6B R/W) OBJ パレットデータ
+    pub obj_color_palette: Vec<u8>, // (Addr $FF6B R/W) OCPD/OBPD
+    pub opri: u8,           // (Addr $FF6C R/W) オブジェクト優先モード
+    pub svbk: u8,           // (Addr $FF70 R/W) WRAM バンク
     pub pcm12: u8,          // (Addr $FF76 R) Audio digital outputs 1 & 2
     pub pcm34: u8,          // (Addr $FF77 R) Audio digital outputs 3 & 4
+
 
     pub unlock_flg: bool,   // アンロックフラグ
     pub cgb_mode: u8,       // CGBモード
@@ -48,24 +49,22 @@ pub struct CGB {
 impl CGB {
     pub fn new() -> Self {
         CGB {
+            key_1: 0,
+            vbk: 0,
             hdma1: 0,
             hdma2: 0,
             hdma3: 0,
             hdma4: 0,
             hdma5: 0,
-            vbk: 0,
-            key_1: 0,
             rp: 0,
-            opri: 0,
-            svbk: 0,
             bcps: 0,
             bgpi: 0,
-            bcpd: 0,
-            bgpd: 0,
+            bg_color_palette: vec![0; COLOR_PALETTE_SIZE],
             ocps: 0,
             obpi: 0,
-            ocpd: 0,
-            obpd: 0,
+            obj_color_palette: vec![0; COLOR_PALETTE_SIZE],
+            opri: 0,
+            svbk: 0,
             pcm12: 0,
             pcm34: 0,
 
@@ -111,10 +110,32 @@ impl IO for CGB {
             0xFF54 => self.hdma4 = val,
             0xFF55 => self.hdma5 = val,
             0xFF56 => self.rp = val,
-            0xFF68 => self.bcps = val,
-            0xFF69 => self.bcpd = val,
-            0xFF6A => self.ocps = val,
-            0xFF6B => self.ocpd = val,
+            0xFF68 => {
+                // BGPI(Bit7) = インクリメント方法
+                self.bgpi = (val & _BIT_7) >> 7;
+                // BCPS(Bit[5:0]) = パレットのインデックス
+                self.bcps = val & 0x3F;
+            },
+            0xFF69 => {
+                // BCPD/BGPD
+                self.bg_color_palette[self.bcps as usize] = val & 0xFF;
+                if self.bgpi != 0 {
+                    self.bcps = (self.bcps + 1) & 0x3F;
+                }
+            },
+            0xFF6A => {
+                // OBPI(Bit7) = インクリメント方法
+                self.obpi = (val & _BIT_7) >> 7;
+                // OCPS(Bit[5:0]) = パレットのインデックス
+                self.ocps = val & 0x3F;
+            },
+            0xFF6B => {
+                // OCPD/OBPD
+                self.obj_color_palette[self.ocps as usize] = val & 0xFF;
+                if self.obpi != 0 {
+                    self.ocps = (self.ocps + 1) & 0x3F;
+                }
+            },
             0xFF6C => self.opri = val,
             0xFF70 => self.svbk = val,
             _ => panic!("[ERR] CGB Reg Invalid Addr (Write to: ${:#04X})", addr),
@@ -126,10 +147,16 @@ impl IO for CGB {
             0xFF4D => self.key_1,
             0xFF4F => self.vbk,
             0xFF56 => self.rp,
-            0xFF68 => self.bcps,
-            0xFF69 => self.bcpd,
-            0xFF6A => self.ocps,
-            0xFF6B => self.ocpd,
+            0xFF68 => {
+                // BGPI(Bit7) | BCPS(Bit[5:0])
+                self.bgpi << 7 | self.bcps
+            },
+            0xFF69 => self.bg_color_palette[self.bcps as usize],
+            0xFF6A => {
+                // OBPI(Bit7) | OCPS(Bit[5:0])
+                self.obpi << 7 | self.ocps
+            },
+            0xFF6B => self.obj_color_palette[self.ocps as usize],
             0xFF6C => self.opri,
             0xFF70 => self.svbk,
             0xFF76 => self.pcm12,

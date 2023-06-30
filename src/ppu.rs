@@ -6,6 +6,13 @@ const VRAM_SIZE: usize = 32 * 1024; // CGB (8KB * 2バンク)
 const VRAM_BANK_SIZE: u16 = 8 * 1024;
 const OAM_SIZE: usize = 0xA0;
 
+// [VRAM Mem Map]
+// 0x0000-0x07FF: Tile Set #1
+// 0x0800-0x0FFF: Tile Set #2
+// 0x1000-0x17FF: Tile Set #3
+// 0x1800-0x1BFF: Tile Map #1
+// 0x1C00-0x1FFF: Tile Map #2
+
 #[derive(Copy, Clone, PartialEq)]
 enum BGPriority {
     Color0,
@@ -41,13 +48,6 @@ pub struct PPU {
 }
 
 impl PPU {
-    // VRAM map
-    // 0x0000-0x07FF: Tile Set #1
-    // 0x0800-0x0FFF: Tile Set #2
-    // 0x1000-0x17FF: Tile Set #3
-    // 0x1800-0x1BFF: Tile Map #1
-    // 0x1C00-0x1FFF: Tile Map #2
-
     pub fn new() -> Self {
         PPU {
             vram: [0; VRAM_SIZE ],
