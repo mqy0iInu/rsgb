@@ -35,6 +35,7 @@ pub struct PPU {
     scanline: [u8; SCREEN_W as usize], // Current scanline
     bg_prio: [BGPriority; SCREEN_W as usize],  // Background priority
 
+    pub cgb_mode: u8,                  // CGB動作モード
     pub cgb_unlock_flg: bool,          // CGB動作フラグ
     pub vram_bank: u8,                 // VRAM バンク (CGB Only)
 }
@@ -70,6 +71,7 @@ impl PPU {
             frame_buffer: [0; (SCREEN_W as usize) * (SCREEN_H as usize)],
             bg_prio: [BGPriority::Color0; SCREEN_W as usize],
 
+            cgb_mode: 0,
             cgb_unlock_flg: false,
             vram_bank: 0,
         }

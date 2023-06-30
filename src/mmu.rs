@@ -1,7 +1,7 @@
+use common::*;
 use bios::BIOS;
-use cgb::CGB;
+use cgb::*;
 use cartridge::Cartridge;
-use common::IO;
 use serial::Serial;
 use gamepad::GamePad;
 use timer::Timer;
@@ -90,7 +90,13 @@ impl MMU {
             // OAM DMA
             0xFF46 => self.oam_dma_start(val),
             // (CGB Only) I/O Reg
-            0xFF4D..=0xFF77 => self.cgb.write(addr, val),
+            0xFF4D..=0xFF77 => {
+                self.cgb.write(addr, val);
+                // HDMA5 ($FF55)への書き込みはDMA転送開始
+                if addr == 0xFF55 {
+                    self.cgb_dma_start();
+                }
+            },
             // HRAM
             0xFF80..=0xFFFE => self.hram[(addr & HRAM_SIZE) as usize] = val,
             // Interrupt Enable
@@ -165,6 +171,7 @@ impl MMU {
     }
 
     pub fn update(&mut self, tick: u8) {
+        self.ppu.cgb_mode = self.cgb.cgb_mode;
         self.ppu.cgb_unlock_flg = self.cgb.unlock_flg;
         self.ppu.vram_bank = self.cgb.vbk;
 
@@ -202,8 +209,32 @@ impl MMU {
         }
     }
 
+    fn cgb_dma_start(&mut self) {
+        // TODO CGBの汎用DMA、H-Blank DMAの転送タイミング
+        let src_addr: u16 = ((self.cgb.hdma1 as u16) << 8) | self.cgb.hdma2 as u16;
+        let dst_addr: u16 = ((self.cgb.hdma3 as u16) << 8) | self.cgb.hdma4 as u16;
+        let mut _dma_len: u16 = 0;
+
+        if( self.cgb.hdma5 & _BIT_7) != _CGB_GP_DMA {
+            // H-Blank DMAは0x10(16)Byte転送
+            _dma_len = 0x10;
+        }else{
+            // 汎用DMAは0x10~0x800(16~2048)Byte転送
+            _dma_len = self.cgb.get_dma_len();
+        }
+
+        for i in 0.._dma_len {
+            let tmp = self.read(src_addr | i);
+            self.write(dst_addr | i, tmp);
+        }
+
+        // 転送完了はレジスタを0xFFにする
+        self.cgb.hdma5 = 0xFF;
+    }
+
     fn oam_dma_start(&mut self, val: u8) {
-        // TODO OAM DMA Timing
+        // TODO OAM DMA転送バグの実装
+        // https://gbdev.io/pandocs/OAM_Corruption_Bug.html
         let src_base = (val as u16) << 8;
         let dst_base = 0xFE00;
 

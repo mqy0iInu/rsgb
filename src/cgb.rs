@@ -1,9 +1,11 @@
 use common::*;
 
-const CGB_MODE_DMG_COMPATI: u8 = 0x80;  // CGB機能とDMGコンパチ動作（GB/GBC共通カートリッジ）
-const CGB_MODE_CGB: u8 = 0xC0;          // CGBでのみ動作（GBC専用カートリッジ）
-const CGB_MODE_NON_CGB: u8 = 0xAA;      // 非CGBモード（CGBモノクロ動作、DMGでいいかも）
-const CGB_MODE_NONE: u8 = 0xFF;
+pub const CGB_MODE_DMG_COMPATI: u8 = 0x80;  // CGB機能とDMGコンパチ動作（GB/GBC共通カートリッジ）
+pub const CGB_MODE_CGB: u8 = 0xC0;          // CGBでのみ動作（GBC専用カートリッジ）
+pub const CGB_MODE_NON_CGB: u8 = 0xAA;      // 非CGBモード（CGBモノクロ動作、DMGでいいかも）
+pub const CGB_MODE_NONE: u8 = 0xFF;
+pub const _CGB_GP_DMA: u8 = 0;
+pub const _CGB_H_BLANK_DMA: u8 = 1;
 
 // [CGB対応]
 // TODO :MBC1（GB/GBC共通） ... テリーのワンダーランド
@@ -86,13 +88,22 @@ impl CGB {
 
         self.unlock_flg = true;
     }
+
+    pub fn get_dma_len(&self) -> u16 {
+        let dma_len: u8 = self.hdma5 & 0x7F; // DMA transfer length Bit[6:0]
+
+        // HDMA5のBit[6:0]の0x00~0x1Fを、+1して0x10倍すると0x10~0x800(16~2048)Byteになる
+        // 原文(https://gbdev.io/pandocs/CGB_Registers.html#ff55--hdma5-cgb-mode-only-vram-dma-lengthmodestart)
+        let transfer_length: u16 = (dma_len as u16 + 0x0001) * 0x0010;
+            transfer_length
+    }
 }
 
 #[allow(dead_code)]
 impl IO for CGB {
     fn write(&mut self, addr: u16, val: u8) {
         match addr {
-            0xFF4D => self.key_1 = val,
+            0xFF4D => self.key_1 = val & 0x01, // Bit7はRO,Bit0はR/W
             0xFF4F => self.vbk = val,
             0xFF51 => self.hdma1 = val,
             0xFF52 => self.hdma2 = val,
