@@ -64,6 +64,14 @@ impl CGB {
 
         self.unlock_flg = true;
     }
+
+    pub fn vbk_write(&mut self, val: u8) {
+        self.vbk = val;
+    }
+
+    pub fn svbk_write(&mut self, val: u8) {
+        self.svbk = val;
+    }
 }
 
 #[allow(dead_code)]

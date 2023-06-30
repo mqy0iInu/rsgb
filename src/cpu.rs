@@ -10,7 +10,8 @@ pub struct CPU {
     sp: u16,
     ime: bool,
     halted: bool,
-    tick: u8, // T-Cycle 4.194304 MHz (≠ マシンサイクル M-Cycleではない)
+    // DMG 4.194304 MHz, CGB 8.388608 MHz
+    tick: u8,
 }
 
 impl CPU {
@@ -23,10 +24,8 @@ impl CPU {
             reg_h: 0, reg_l: 0,
             ime: false,
             halted: false,
-
             // pc: 0, // BIOS
             pc: 0x0100, // BIOS Skip
-
             sp: 0,
             tick: 0,
         }

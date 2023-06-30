@@ -11,10 +11,11 @@ mod bios;
 mod cartridge;
 mod cpu;
 mod common;
-mod gamepad;
 mod mmu;
 mod ppu;
+mod serial;
 mod timer;
+mod gamepad;
 mod cgb;
 
 use common::*;
