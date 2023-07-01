@@ -42,22 +42,22 @@ fn translate_keycode(key: Keycode) -> Option<gamepad::Key> {
     }
 }
 
-/// Handles key down event.
+// Handles key down event.
 fn handle_keydown(cpu: &mut cpu::CPU, key: Keycode) {
     translate_keycode(key).map(|k| cpu.mmu.gamepad.keydown(k));
 }
 
-/// Handles key up event.
+// Handles key up event.
 fn handle_keyup(cpu: &mut cpu::CPU, key: Keycode) {
     translate_keycode(key).map(|k| cpu.mmu.gamepad.keyup(k));
 }
 
-/// Returns ROM filename.
+// Returns ROM filename.
 fn rom_fname() -> String {
     env::args().nth(1).unwrap()
 }
 
-/// Returns save filename for current ROM.
+// Returns save filename for current ROM.
 fn save_fname() -> String {
     let mut path_buf = PathBuf::from(rom_fname());
     path_buf.set_extension("sav");
@@ -122,9 +122,9 @@ fn main() {
                         let offset = y * pitch + x * 3;
                         let color = fb[y * 160 + x];
 
-                        buf[offset] = color;
-                        buf[offset + 1] = color;
-                        buf[offset + 2] = color;
+                        buf[offset] = color;        // R
+                        buf[offset + 1] = color;    // G
+                        buf[offset + 2] = color;    // B
                     }
                 }
             })

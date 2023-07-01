@@ -7,19 +7,41 @@ const VRAM_SIZE: usize = 32 * 1024; // CGB (8KB * 2バンク)
 const VRAM_BANK_SIZE: u16 = 8 * 1024;
 const OAM_SIZE: usize = 0xA0;
 
+// For DMG　モノクロパレット
+const COLOR_LIGHT_GRAY: u8 = 0xAA;
+const COLOR_DARK_GRAY: u8 = 0x55;
+const COLOR_BLACK: u8 = 0x00;
+const COLOR_WHITE: u8 = 0xFF;
+
+// [VRAM Mem Map]
+// **********************************
+// Bank 0
+// **********************************
+// 0x8000-0x87FF: Tile Set #1
+// 0x8800-0x8FFF: Tile Set #2
+// 0x9000-0x97FF: Tile Set #3
+// 0x9800-0x9BFF: Tile Map #1
+// 0x9C00-0x9FFF: Tile Map #2
+// **********************************
+// Bank 1 (CBG Only)
+// **********************************
+// 0x8000-0x87FF: (調査中)
+// 0x8800-0x8FFF: (調査中)
+// 0x9000-0x97FF: (調査中)
+// 0x9800-0x9BFF: BG Map Attributes (※注)
+// 0x9C00-0x9FFF: (調査中)
+// **********************************
+// (※注)は@get_bg_plt_num()に記載
+
+pub const _BG_MAP_ATTRIBUTE_SIZE: usize = 32 * 32;
+
+
 #[derive(Default, Clone, PartialEq, Eq)]
 pub struct RGB24Color {
     pub r: u8,
     pub g: u8,
     pub b: u8,
 }
-
-// [VRAM Mem Map]
-// 0x0000-0x07FF: Tile Set #1
-// 0x0800-0x0FFF: Tile Set #2
-// 0x1000-0x17FF: Tile Set #3
-// 0x1800-0x1BFF: Tile Map #1
-// 0x1C00-0x1FFF: Tile Map #2
 
 #[derive(Copy, Clone, PartialEq)]
 enum BGPriority {
@@ -46,10 +68,17 @@ pub struct PPU {
     pub irq_vblank: bool,             // V-Blank interrupt request
     pub irq_lcdc: bool,               // LCDC interrupt request
     cnt: u16,                         // Elapsed clocks in current mode
-    frame_buffer: [u8; SCREEN_WH],    // Frame buffer
-    scanline: [u8; SCREEN_W as usize], // Current scanline
     bg_prio: [BGPriority; SCREEN_W as usize],  // Background priority
 
+
+    // DMG
+    frame_buffer: [u8; SCREEN_WH],    // Frame buffer
+    scanline: [u8; SCREEN_W as usize], // Current scanline
+
+    // TODO CGBの時だけインスタンス生成
+    // CGB
+    frame_buffer_col: [u16; SCREEN_WH],  // CGB対応　カラーフレームバッファ(u16 ... RGB555)
+    scanline_col: [u16; SCREEN_W as usize], // CGB対応　カラースキャンライン(u16 ... RGB555)
     pub cgb_mode: u8,                  // CGB動作モード (CGB Only)
     pub cgb_unlock_flg: bool,          // CGB動作フラグ (CGB Only)
     pub vram_bank: u8,                 // VRAM バンク (CGB Only)
@@ -77,10 +106,15 @@ impl PPU {
             irq_vblank: false,
             irq_lcdc: false,
             cnt: 0,
-            scanline: [0; SCREEN_W as usize],
-            frame_buffer: [0; (SCREEN_W as usize) * (SCREEN_H as usize)],
             bg_prio: [BGPriority::Color0; SCREEN_W as usize],
 
+            // DMG
+            scanline: [0; SCREEN_W as usize],
+            frame_buffer: [0; SCREEN_WH],
+
+            // CGB
+            scanline_col: [0; SCREEN_W as usize],
+            frame_buffer_col: [0; SCREEN_WH],
             cgb_mode: 0,
             cgb_unlock_flg: false,
             vram_bank: 0,
@@ -89,8 +123,45 @@ impl PPU {
         }
     }
 
+    // (DMG, 非CGBモード専用): モノクロパレットの色変換
+    // https://gbdev.io/pandocs/Palettes.html#ff47--bgp-non-cgb-mode-only-bg-palette-data
+    fn map_color(&self, color_num: u8, palette: u8) -> u8 {
+        match (palette >> (color_num << 1)) & 0x03 {
+            0 => COLOR_WHITE,        // 白
+            1 => COLOR_LIGHT_GRAY,   // ライトグレー
+            2 => COLOR_DARK_GRAY,    // ダークグレー
+            3 | _ => COLOR_BLACK,    // 黒
+        }
+    }
+
+    // (※注)
+    // BG Map Attributesについて理解したので翻訳メモ（https://gbdev.io/pandocs/Tile_Maps.html）
+    //
+    // [メモ] BG/OBJカラーパレット0~7のどのパレットを指定する方法は？
+    // PRG-ROMに仕込まれたBG Map AttributesがVRAM Bank1 $9C00~$9FFFにロードさせる
+    // サイズは32x32Byte(1024KB)で、下記のような構成でBit0がパレットの指定になる
+    // ★VRAM Bank0 @ $9800~$9BFFは、VRAM Bank1 @ $9800~$9BFFが対応して色付けしてる、ここ重要！
+    // [BG Map Attributesの構成(これが32x32ある)]
+    // ================================================================================
+    // Bit 7    BG-to-OAM Priority         (0=Use OAM Priority bit, 1=BG Priority)
+    // Bit 6    Vertical Flip              (0=Normal, 1=Mirror vertically)
+    // Bit 5    Horizontal Flip            (0=Normal, 1=Mirror horizontally)
+    // Bit 4    Not used
+    // Bit 3    Tile VRAM Bank number      (0=Bank 0, 1=Bank 1)
+    // Bit 2-0  Background Palette number  (BGP0-7)
+    // ================================================================================
     #[allow(dead_code)]
-    fn rgb555_to_rgb24(rgb555: u16) -> RGB24Color {
+    fn get_bg_plt_num(&mut self, addr: u16) -> u8
+    {
+        // TODO BG Map AttributeからBGパレット番号の取得処理
+        let offset = VRAM_BANK_SIZE as usize * self.vram_bank as usize;
+        let bg_plt_num: u8 = self.vram[addr as usize + offset] & 0x07; // 0x07 = Bit 2-0
+        bg_plt_num
+    }
+
+    // (GB/GBC共通、GBC専用) カラーパレット(RGB555)のRGB24変換
+    #[allow(dead_code)]
+    fn rgb555_to_rgb24(&mut self, rgb555: u16) -> RGB24Color {
         let tmp = rgb555.view_bits::<Lsb0>();
         let r = tmp[0..=4].load::<u8>();
         let g = tmp[5..=9].load::<u8>();
@@ -102,7 +173,7 @@ impl PPU {
         }
     }
 
-    /// Fetches tile data from VRAM.
+    // Fetches tile data from VRAM.
     fn fetch_tile(&self, tile_no: u8, offset_y: u8, tile_data_sel: bool) -> (u8, u8) {
         // Fetch tile data from tile set
         let tile_data_addr = if tile_data_sel {
@@ -128,7 +199,7 @@ impl PPU {
         (_tile0, _tile1)
     }
 
-    /// Fetches BG or Window tile data from VRAM.
+    // Fetches BG or Window tile data from VRAM.
     fn fetch_bg_window_tile(
         &self,
         tile_x: u8,
@@ -150,7 +221,7 @@ impl PPU {
         self.fetch_tile(_tile_no, offset_y, self.lcdc & 0x10 > 0)
     }
 
-    /// Fetches BG tile data from VRAM.
+    // Fetches BG tile data from VRAM.
     fn fetch_bg_tile(&self, tile_x: u8, tile_y: u8, offset_y: u8) -> (u8, u8) {
         // Fetch tile index from tile map
         let tile_map_base = if self.lcdc & 0x8 > 0 { 0x1C00 } else { 0x1800 };
@@ -158,7 +229,7 @@ impl PPU {
         self.fetch_bg_window_tile(tile_x, tile_y, offset_y, tile_map_base)
     }
 
-    /// Fetches Window tile data from VRAM.
+    // Fetches Window tile data from VRAM.
     fn fetch_window_tile(&self, tile_x: u8, tile_y: u8, offset_y: u8) -> (u8, u8) {
         // Fetch tile index from tile map
         let tile_map_base = if self.lcdc & 0x40 > 0 { 0x1C00 } else { 0x1800 };
@@ -166,25 +237,15 @@ impl PPU {
         self.fetch_bg_window_tile(tile_x, tile_y, offset_y, tile_map_base)
     }
 
-    /// Converts color number to brightness using palette.
-    fn map_color(&self, color_no: u8, palette: u8) -> u8 {
-        match (palette >> (color_no << 1)) & 0x03 {
-            0 => 0xFF,        // 白
-            1 => 0xAA,        // ライトグレー
-            2 => 0x55,        // ダークグレー
-            3 | _ => 0x00,    // 黒
-        }
-    }
-
-    /// Returns the color number at a given position from tile data.
-    fn get_color_no(&self, tile: (u8, u8), bitpos: u8) -> u8 {
+    // Returns the color number at a given position from tile data.
+    fn get_color_num(&self, tile: (u8, u8), bitpos: u8) -> u8 {
         let lo_bit = tile.0 >> bitpos & 1;
         let hi_bit = tile.1 >> bitpos & 1;
 
         hi_bit << 1 | lo_bit
     }
 
-    /// Renders BG.
+    // Renders BG.
     fn render_bg(&mut self) {
         // Tile coordinate
         let mut tile_x = self.scx >> 3;
@@ -211,10 +272,10 @@ impl PPU {
                 }
             }
 
-            let color_no = self.get_color_no(tile, 7 - offset_x);
-            let color = self.map_color(color_no, self.bgp);
+            let color_num = self.get_color_num(tile, 7 - offset_x);
+            let color = self.map_color(color_num, self.bgp);
 
-            self.bg_prio[x as usize] = if color_no == 0 {
+            self.bg_prio[x as usize] = if color_num == 0 {
                 BGPriority::Color0
             } else {
                 BGPriority::Color123
@@ -238,7 +299,7 @@ impl PPU {
         }
     }
 
-    /// Renders sprites.
+    // Renders sprites.
     fn render_sprites(&mut self) {
         let mut n_sprites = 0;
         let height = if self.lcdc & 0x4 > 0 { 16 } else { 8 };
@@ -310,21 +371,21 @@ impl PPU {
                 }
 
                 let bitpos = if flip_x { offset_x } else { 7 - offset_x };
-                let color_no = self.get_color_no(tile, bitpos);
-                if color_no == 0 {
+                let color_num = self.get_color_num(tile, bitpos);
+                if color_num == 0 {
                     continue;
                 }
                 if self.bg_prio[x as usize] == BGPriority::Color123 && obj_prio {
                     continue;
                 }
-                let color = self.map_color(color_no, palette);
+                let color = self.map_color(color_num, palette);
 
                 self.scanline[x as usize] = color;
             }
         }
     }
 
-    /// Renders a scanline.
+    // Renders a scanline.
     fn render_scanline(&mut self) {
         if self.lcdc & 0x1 > 0 {
             self.render_bg();
@@ -339,12 +400,12 @@ impl PPU {
         }
     }
 
-    /// Returns the current contents of the frame buffer.
+    // Returns the current contents of the frame buffer.
     pub fn frame_buffer(&self) -> &[u8] {
         &self.frame_buffer
     }
 
-    /// Checks LYC interrupt.
+    // Checks LYC interrupt.
     fn update_lyc_interrupt(&mut self) {
         // LYC=LY coincidence interrupt
         if self.ly == self.lyc {
@@ -358,7 +419,7 @@ impl PPU {
         }
     }
 
-    /// Checks LCD mode interrupt.
+    // Checks LCD mode interrupt.
     fn update_mode_interrupt(&mut self) {
         // Mode interrupts
         match self.stat & 0x03 {

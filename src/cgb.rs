@@ -6,7 +6,28 @@ pub const CGB_MODE_NON_CGB: u8 = 0xAA;      // 非CGBモード（CGBモノクロ
 pub const CGB_MODE_NONE: u8 = 0xFF;
 pub const _CGB_GP_DMA: u8 = 0;
 pub const _CGB_H_BLANK_DMA: u8 = 1;
-pub const COLOR_PALETTE_SIZE: usize = 64;
+
+// リファレンスを翻訳＆図解すると
+// https://gbdev.io/pandocs/Palettes.html#palettes
+// BG/OBJの各カラーパレットは[8パレット×4色/パレット×2バイト/色= 64Byte]
+//
+// [カラーパレットの色番号]
+// |    0x00    |    0x01    |    0x02    |    0x03    |
+// |BGP0 色番号0|BGP0 色番号1|BGP0 色番号2|BGP0 色番号3|
+// ↓ =
+// [カラーパレットのデータ]
+// |    0x00    |    0x01    |    0x02    |    0x03    |
+// |BGP0 0の上位|BGP0 0の下位|BGP0 1の上位|BGP0 1の下位|
+//
+// 例）データ0x03はBGP0の色番号1の上位バイト(青と緑)
+//
+// [RGB555]
+// Bit 0-4   Red Intensity   ($00-1F)
+// Bit 5-9   Green Intensity ($00-1F)
+// Bit 10-14 Blue Intensity  ($00-1F)
+// |   Bit[15:12]   |  Bit[11:8]   |    Bit[7:4]    |    Bit[3:0]    |
+// | N/A |     青色 5bit     |     緑色 5bit     |     赤色 5bit     |
+pub const _COLOR_PALETTE_SIZE: usize = 64;
 
 // [CGB対応]
 // TODO :MBC1（GB/GBC共通） ... テリーのワンダーランド
@@ -59,10 +80,10 @@ impl CGB {
             rp: 0,
             bcps: 0,
             bgpi: 0,
-            bg_col_plt: vec![0; COLOR_PALETTE_SIZE],
+            bg_col_plt: vec![0; _COLOR_PALETTE_SIZE],
             ocps: 0,
             obpi: 0,
-            obj_col_plt: vec![0; COLOR_PALETTE_SIZE],
+            obj_col_plt: vec![0; _COLOR_PALETTE_SIZE],
             opri: 0,
             svbk: 0,
             pcm12: 0,
