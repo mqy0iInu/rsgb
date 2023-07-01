@@ -20,7 +20,10 @@ mod cgb;
 
 use common::*;
 
+extern crate bitvec;
+
 #[macro_use]
+// extern crate bitvec;
 extern crate log;
 extern crate env_logger;
 extern crate sdl2;

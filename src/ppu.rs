@@ -1,10 +1,18 @@
 use common::*;
 // use  cgb::*;
+use bitvec::prelude::*;
 
 // const VRAM_SIZE: usize = 8 * 1024;  // DMG
 const VRAM_SIZE: usize = 32 * 1024; // CGB (8KB * 2バンク)
 const VRAM_BANK_SIZE: u16 = 8 * 1024;
 const OAM_SIZE: usize = 0xA0;
+
+#[derive(Default, Clone, PartialEq, Eq)]
+pub struct RGB24Color {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
 
 // [VRAM Mem Map]
 // 0x0000-0x07FF: Tile Set #1
@@ -42,13 +50,15 @@ pub struct PPU {
     scanline: [u8; SCREEN_W as usize], // Current scanline
     bg_prio: [BGPriority; SCREEN_W as usize],  // Background priority
 
-    pub cgb_mode: u8,                  // CGB動作モード
-    pub cgb_unlock_flg: bool,          // CGB動作フラグ
+    pub cgb_mode: u8,                  // CGB動作モード (CGB Only)
+    pub cgb_unlock_flg: bool,          // CGB動作フラグ (CGB Only)
     pub vram_bank: u8,                 // VRAM バンク (CGB Only)
+    pub p_bg_col_plt: *const u8,       // BGカラーパレットポインタ(CGB Only)
+    pub p_obj_col_plt: *const u8,      // OBJカラーパレットポインタ(CGB Only)
 }
 
 impl PPU {
-    pub fn new() -> Self {
+    pub fn new(p_bg_col_plt: *const u8, p_obj_col_plt: *const u8) -> Self {
         PPU {
             vram: [0; VRAM_SIZE ],
             oam: [0; OAM_SIZE],
@@ -74,6 +84,21 @@ impl PPU {
             cgb_mode: 0,
             cgb_unlock_flg: false,
             vram_bank: 0,
+            p_bg_col_plt: p_bg_col_plt,
+            p_obj_col_plt: p_obj_col_plt,
+        }
+    }
+
+    #[allow(dead_code)]
+    fn rgb555_to_rgb24(rgb555: u16) -> RGB24Color {
+        let tmp = rgb555.view_bits::<Lsb0>();
+        let r = tmp[0..=4].load::<u8>();
+        let g = tmp[5..=9].load::<u8>();
+        let b = tmp[10..=14].load::<u8>();
+        RGB24Color {
+            r: r << 3 | r >> 2,
+            g: g << 3 | g >> 2,
+            b: b << 3 | b >> 2,
         }
     }
 

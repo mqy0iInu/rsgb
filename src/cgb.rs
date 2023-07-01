@@ -32,10 +32,10 @@ pub struct CGB {
     pub rp: u8,             // (Addr $FF56 R/W) 赤外線通信ポート
     pub bgpi: u8,           // (Addr $FF68 R/W) 背景パレット インデックス
     pub bcps: u8,           // (Addr $FF68 R/W) 背景色パレット仕様
-    pub bg_color_palette: Vec<u8>, // (Addr $FF69 R/W) BCPD/BGPD
+    pub bg_col_plt: Vec<u8>, // (Addr $FF69 R/W) BCPD/BGPD
     pub ocps: u8,           // (Addr $FF6A R/W) OBJ カラーパレット仕様
     pub obpi: u8,           // (Addr $FF6A R/W) OBJ パレットインデックス
-    pub obj_color_palette: Vec<u8>, // (Addr $FF6B R/W) OCPD/OBPD
+    pub obj_col_plt: Vec<u8>, // (Addr $FF6B R/W) OCPD/OBPD
     pub opri: u8,           // (Addr $FF6C R/W) オブジェクト優先モード
     pub svbk: u8,           // (Addr $FF70 R/W) WRAM バンク
     pub pcm12: u8,          // (Addr $FF76 R) Audio digital outputs 1 & 2
@@ -59,10 +59,10 @@ impl CGB {
             rp: 0,
             bcps: 0,
             bgpi: 0,
-            bg_color_palette: vec![0; COLOR_PALETTE_SIZE],
+            bg_col_plt: vec![0; COLOR_PALETTE_SIZE],
             ocps: 0,
             obpi: 0,
-            obj_color_palette: vec![0; COLOR_PALETTE_SIZE],
+            obj_col_plt: vec![0; COLOR_PALETTE_SIZE],
             opri: 0,
             svbk: 0,
             pcm12: 0,
@@ -118,7 +118,7 @@ impl IO for CGB {
             },
             0xFF69 => {
                 // BCPD/BGPD
-                self.bg_color_palette[self.bcps as usize] = val & 0xFF;
+                self.bg_col_plt[self.bcps as usize] = val & 0xFF;
                 if self.bgpi != 0 {
                     self.bcps = (self.bcps + 1) & 0x3F;
                 }
@@ -131,7 +131,7 @@ impl IO for CGB {
             },
             0xFF6B => {
                 // OCPD/OBPD
-                self.obj_color_palette[self.ocps as usize] = val & 0xFF;
+                self.obj_col_plt[self.ocps as usize] = val & 0xFF;
                 if self.obpi != 0 {
                     self.ocps = (self.ocps + 1) & 0x3F;
                 }
@@ -151,12 +151,12 @@ impl IO for CGB {
                 // BGPI(Bit7) | BCPS(Bit[5:0])
                 self.bgpi << 7 | self.bcps
             },
-            0xFF69 => self.bg_color_palette[self.bcps as usize],
+            0xFF69 => self.bg_col_plt[self.bcps as usize],
             0xFF6A => {
                 // OBPI(Bit7) | OCPS(Bit[5:0])
                 self.obpi << 7 | self.ocps
             },
-            0xFF6B => self.obj_color_palette[self.ocps as usize],
+            0xFF6B => self.obj_col_plt[self.ocps as usize],
             0xFF6C => self.opri,
             0xFF70 => self.svbk,
             0xFF76 => self.pcm12,

@@ -30,15 +30,20 @@ pub struct MMU {
 
 impl MMU {
     pub fn new(bios_path: &str, rom_path: &str) -> Self {
+        let cgb: CGB = CGB::new();
+        // BG/OBJカラーパレットのポインタを取得
+        let p_bg_col_plt: *const u8 = cgb.bg_col_plt.as_ptr();
+        let p_obj_col_plt: *const u8 = cgb.obj_col_plt.as_ptr();
+
         MMU {
             bios: BIOS::new(bios_path),
             cartridge: Cartridge::new(rom_path),
-            cgb: CGB::new(),
+            cgb: cgb,
             wram: [0; WRAM_SIZE as usize],
             hram: [0; HRAM_SIZE as usize],
             serial: Serial::new(),
             gamepad: GamePad::new(),
-            ppu: PPU::new(),
+            ppu: PPU::new(p_bg_col_plt, p_obj_col_plt),
             timer: Timer::new(),
             int_flag: 0,
             int_enable: 0,
